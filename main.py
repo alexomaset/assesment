@@ -33,7 +33,8 @@ from fix_module import (
 import requests
 import tempfile
 import re
-from threading import Thread
+from threading import Thread, current_thread
+import streamlit as st
 
 # Ensure cache directory exists
 ensure_cache_dir('./cache')
@@ -606,49 +607,40 @@ def main():
                 progress_placeholder = st.empty()
                 progress_bar = st.progress(0, "Starting processing...")
                 
-                # Process in background to keep UI responsive
-                def process_in_background():
-                    try:
-                        # Create event loop for async processing
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        
-                        # Process steps with progress updates
-                        progress_placeholder.text("Downloading video...")
-                        progress_bar.progress(10)
-                        
-                        # Process the video URL asynchronously
-                        success, results, error = loop.run_until_complete(
-                            process_video_url_async(video_url)
-                        )
-                        
-                        # Update session state with results
-                        if success:
-                            st.session_state.results = results
-                            st.session_state.error_message = None
-                            progress_placeholder.text("✅ Analysis complete!")
-                            progress_bar.progress(100)
-                        else:
-                            st.session_state.error_message = f"Error: {error}"
-                            progress_placeholder.text(f"❌ Error: {error}")
-                    except Exception as e:
-                        st.session_state.error_message = f"Error: {str(e)}"
-                        progress_placeholder.text(f"❌ Unexpected error: {str(e)}")
-                    finally:
-                        # Trigger a rerun to update the UI with results
-                        st.rerun()
+                # Initialize loop in the main thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
                 
-                # Start background processing thread
-                processing_thread = Thread(target=process_in_background)
-                # Make sure thread has access to Streamlit runtime context
-                add_script_run_ctx(processing_thread)
-                processing_thread.start()
+                # Show initial progress
+                progress_placeholder.text("Starting analysis...")
+                progress_bar.progress(10)
                 
-                # Update progress while waiting (simulated for demo)
-                for i in range(11, 90, 10):
-                    time.sleep(0.5)  # Short delay to not block UI
-                    progress_placeholder.text(f"Processing... ({i}%)")
-                    progress_bar.progress(i)
+                try:
+                    # Show incremental progress
+                    for i in range(20, 90, 10):
+                        time.sleep(0.2)  # Brief delay to show progress
+                        progress_placeholder.text(f"Processing... ({i}%)")
+                        progress_bar.progress(i)
+                    
+                    # Process the video URL synchronously
+                    success, results, error = loop.run_until_complete(
+                        process_video_url_async(video_url)
+                    )
+                    
+                    # Update results based on processing outcome
+                    if success:
+                        st.session_state.results = results
+                        st.session_state.error_message = None
+                        progress_placeholder.text("✅ Analysis complete!")
+                        progress_bar.progress(100)
+                    else:
+                        st.session_state.error_message = f"Error: {error}"
+                        progress_placeholder.text(f"❌ Error: {error}")
+                        progress_bar.progress(100)
+                except Exception as e:
+                    st.session_state.error_message = f"Error: {str(e)}"
+                    progress_placeholder.text(f"❌ Unexpected error: {str(e)}")
+                    progress_bar.progress(100)
         
         # Display the results if available
         if 'results' in st.session_state:
