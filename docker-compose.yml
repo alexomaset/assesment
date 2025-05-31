@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  accent-analyzer:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./cache:/app/cache
+    environment:
+      - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=200
+      - CACHE_TTL=86400  # 24-hour cache expiration
+    restart: unless-stopped
