@@ -29,6 +29,9 @@ from fix_module import (
     create_audio_chunks
 )
 
+# Import functions from optimizations module
+from optimizations import generate_cache_key, get_cached_result, cache_result, process_async
+
 # Import necessary functions for Loom video handling
 import requests
 import tempfile
